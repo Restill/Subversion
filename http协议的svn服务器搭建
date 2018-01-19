@@ -1,0 +1,121 @@
+环境：readhatlinux
+2017/2/22  
+第一步：安装apache subversion 
+yum install httpd 
+yum install  httpd-devel       //用于开发Apache模块 
+yum install  subversion 
+yum install  mod_dav_svn   //Subversion与Apache之间的接口（通过它，Apache就可以访问版本库，可以让客户端也使用HTTP的扩展协议 WebDAV/DeltaV进行访问） 
+yum install  mod_auth_mysql   //这一项用于用户身份验证，在网上有资料说貌似这个mod_auth_mysql没得配置访问权限的只有用户设置，建议不装，用htpasswd就可以，在这里我没有装，我还是打算用htpasswd，可能下回会试试。 
+验证 svn模块（mod_dav_svn）是否正确安装 
+ls /etc/httpd/modules | grep svn 
+系统提示： 
+mod_authz_svn.so 
+mod_dav_svn.so 
+验证安装： 
+svn --version 
+显示如下表明正确安装 
+＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝
+svn，版本 1.4.2(r22196) 
+   编译于 Aug 10 2009，18:00:04
+Copyright (C) 2000-2006 CollabNet. 
+Subversion is open source software, see http://subversion.tigris.org/
+This product includes software developed by CollabNet(http://www.Collab.Net/).
+可使用以下的档案库存取 (RA) 模块：
+* ra_dav : 通过WebDAV (DeltaV) 协议访问档案库的模块。 
+  - handles 'http' scheme 
+  - handles 'https' scheme 
+* ra_svn : 使用svn网络协议访问档案库的模块。 
+  - handles 'svn' scheme 
+* ra_local : 访问本地磁盘的档案库模块。 
+  - handles 'file' scheme 
+＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝
+第 二步：创建SVN库和项目 
+mkdir /home/svn          //创建SVN库 
+svnadmin create /home/svn/projcet         //创建项目 
+第三步：添加组及组员权限
+groupadd subversion     //创建一个叫subversion的组为拥有仓库所在的目录 
+usermod -G subversion -a apache   //将自己和Apache 用户加入组成员中 
+查看：more /etc/group | grep subversion 
+系统提示：subversion:x:500:apache 
+第 四步：修改项目权限
+chgrp -R subversion /home/svn/project 
+chmod －R 777 /home/svn/project
+这里最好根据自己的安全需求配置相 应的权限，我这是试验环境所以直接给了777
+第五步：配置httpd 
+编辑 httpd.conf 
+vim /etc/httpd/conf/httpd.conf 
+查看有没有LoadModuledav_svn_module modules/mod_dav_svn.so这一行，如果没有就添加上为了使客户端能够通过Apache来访问SVN档案库，Apache需要加载 mod_dav_svn模块。如果Apache是按照与预设目 录安装的，mod_dav_svn 模块应该会安装在 Apache 安装位置 (默认路径是 /etc/httpd/) 的 modules 子目录内。同时在Apache的配置文件httpd.conf（默认路径为etc/httpd/conf/）中已经使用 LoadModule指令加载了该模块（如果没有，手动添加）注意这个指令必须出现在其它的Subversion 相关指令之前。还要加载mod_authz_svn.so模块 
+例如：
+LoadModule dav_svn_modulemodules/mod_dav_svn.so 
+LoadModule authz_svn_module modules/mod_authz_svn.so 
+一般来说apache2都己正常加载了这两个模块 
+启动httpd 
+/etc/init.d/httpd start 
+打开浏览器查看是否能看到apache的页 面（注意如果开了防火墙记得开放80端口） 
+第六步：配置SVN 
+编辑 subversion.conf 
+svnserve.conf 文件， 该文件配置项分为以下5项： 
+       anon-access： 控制非鉴权用户访问版本库的权限。 
+       auth-access： 控制鉴权用户访问版本库的权限。 
+       password-db： 指定用户名口令文件名。 
+       authz-db：指定权限配置文件名，通过该文件可以实现以路径为基础的访问控制。 
+       realm：指定版本库的认证域，即在登录时提示的认证域名称。若两个版本库的认证域相同，建议使用相同的用户名口令数据文件 
+vim /etc/httpd/conf.d/subversion.conf 
+按以下代码更改（栗红为修改的代码）： 
+LoadModule dav_svn_module modules/mod_dav_svn.so 
+LoadModule authz_svn_module modules/mod_authz_svn.so 
+  
+<Location /svn> 
+DAV svn 
+SVNPath   /home/svn/projcet      ---指定SVN路径
+# 
+#   # Limit write permission to list of valid users. 
+#   <LimitExcept GET PROPFIND OPTIONS REPORT> 
+#      # Require SSL connection for passwordprotection. 
+#      # SSLRequireSSL 
+# 
+AuthType  Basic 
+AuthName  "Authorization Realm" 
+AuthUserFile  /home/svn/projcet/conf/passwd    ---svn用户路径
+Require valid-user 
+#   </LimitExcept> 
+</Location> 
+第 七步：建立用户
+#cd  /home/svn/projcet/conf/    ---进入到svn目录
+Htpasswd   -c   passwd  username   ---创建svn用户密码
+Vim  /home/svn/projcet/conf/authz
+Test  = rw
+
+
+# useradd  nametest   --创建用户
+#passwd  passwdtest    ---创建密码
+  通过http访问的账号是Apache http验证的。
+  通过svn://访问的账号是svn仓库conf目录下passwd指定的。两个是独立的认证方式。
+
+重启apache                                    
+通过web页面访问，弹出用户登录验证，访问成功 （注意开放防火墙的3690端口）
+
+＝＝＝＝＝＝＝＝＝试 验过程中出现的问题记录＝＝＝＝＝＝＝＝＝＝＝＝＝＝ 
+配置完httpd.con后重启apach过程中提示出错 
+/etc/init.d/httpd restart 
+系统提示： 
+启动 httpd： 
+[Mon Jan 31 18:45:03 2011] [warn]module dav_svn_module is already loaded, skipping 
+[Mon Jan 31 18:45:03 2011] [warn] module authz_svn_module is already loaded,skipping 
+[Mon Jan 31 18:45:03 2011] [warn] module dav_svn_module is already loaded,skipping 
+[Mon Jan 31 18:45:03 2011] [warn] module authz_svn_module is already loaded,skipping 
+了看样子不太 对，提示是模块己加载过，现在己是重复了，仔细查了一下，在/etc/httpd /conf.d/subversion.con内的确己包含了dav_svn_module和authz_svn_module这两个模块，我是重复加入 了删除……，但我在httpd.conf里确实没有看到这两个模块加载的语句，但提示说是己加载过，只好也删除，重启正常，回到目录里去查看，在etc/httpd/conf.d/module/下的确是存在这两个模块，但httpd.conf里也确实是没看到己加载的 语句，哪么到底在哪儿加载了呢？2011-02-21 
+打开web输入http://192.168.0.5/svn/projcet提示： 
+The requested URL /svn/project wasnot found on this server. 
+找不到服务，但apache的页面可以打开，应该是在/etc/httpd /conf.d/subversion.conf设置出错了，回头再查了一下发现错是出在“<Location /svn/projcet>”在这句里不应是指到项目，而是指到文件仓库就行了，应该是“<Location /svn>”
+打开web输入http://192.168.0.5/svn/projcet弹出了验证窗口，输入后没进入提示： 
+Forbidden 
+You don't have permission to access /svn/project on this server. 
+应该是用户访问文件仓库的权限问题，还是解决一下权限的问题吧 
+主要 原因是：/home/svn/project目录对于svn用户（如：svnroot）没有权限，可能是因为用svnadmin create时是以root运行的，所以，mod_dav_svn就没有相应权限等 
+修改了svn的权限： 
+chown -R test /home/svn/project 
+chgrp -R subversion /home/svn/project 
+chmod －R 777 /home/svn/project 
+再打开web，输入网址后直接进入了项目目录，很郁闷，直接就进入了，验证跑哪儿去 了？
+重启httpd后再进入，验证窗口弹出来了，也正确进入了。
