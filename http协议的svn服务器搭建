@@ -46,7 +46,7 @@ chmod －R 777 /home/svn/project
 vim /etc/httpd/conf/httpd.conf 
 查看有没有LoadModuledav_svn_module modules/mod_dav_svn.so这一行，如果没有就添加上为了使客户端能够通过Apache来访问SVN档案库，Apache需要加载 mod_dav_svn模块。如果Apache是按照与预设目 录安装的，mod_dav_svn 模块应该会安装在 Apache 安装位置 (默认路径是 /etc/httpd/) 的 modules 子目录内。同时在Apache的配置文件httpd.conf（默认路径为etc/httpd/conf/）中已经使用 LoadModule指令加载了该模块（如果没有，手动添加）注意这个指令必须出现在其它的Subversion 相关指令之前。还要加载mod_authz_svn.so模块 
 例如：
-LoadModule dav_svn_modulemodules/mod_dav_svn.so 
+LoadModule dav_svn_module   modules/mod_dav_svn.so 
 LoadModule authz_svn_module modules/mod_authz_svn.so 
 一般来说apache2都己正常加载了这两个模块 
 启动httpd 
