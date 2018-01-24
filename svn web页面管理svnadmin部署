@@ -1,0 +1,64 @@
+1.svnadmin介绍
+https://code.google.com/archive/p/jsvnadmin/
+
+2.svnadmin下载
+https://code.google.com/archive/p/jsvnadmin/downloads
+
+3.安装svnadmin之前
+  3.1安装Svn 服务器端
+     yum  install subversion        ---下载svn软件包
+     /usr/bin/svnversion --version  ---查看svn版本号
+     mkdir -p /var/svn/svnrepos     ---创建svn仓库目录
+     svnadmin create /var/svn/svnrepos/
+     cd /var/svn/svnrepos/conf
+vim passwd     ---添加用户与密码
+     [users]
+     # harry = harryssecret
+     # sally = sallyssecret
+     admin = admin      ---用户 = 密码
+
+vim authz
+     在最后一行添加如下内容
+     [/]
+     admin=rw
+     w=r
+
+vim svnserve.conf 
+     anon-access = read
+     auth-access = write
+     password-db = passwd    --指定用户密码文件
+     authz-db = authz 
+     realm = /var/svn/svnrepos
+svnserve -d -r /var/svn/svnrepos/  ---启动svn服务
+netstat -anpt | grep subversion    ---查看svn进程
+ 3.2安装Java 运行环境
+ 3.3安装Tomcat 6
+ 3.4安装mysql
+yum安装mysql
+yum  install mysql mysql-devel mysql-server
+安装完成之后，进入数据库，创建一个名为svnadmin的数据库
+mysql -uroot -p（用户密码）
+create database svnadmin character set utf8;    ---创建svnadmin数据库
+use svnadmin；                                  ---切换到svnadmin库
+source /soft/svnadmin-3.0.3/db/mysql5.sql;    （此处数据库定要导入成功)
+fluence privileges；                            ---使刚才配置生效
+exit；
+
+
+4.使用tomcat部署svnadmin
+将下载好的svnadmin-3.0.5软件包放到tomcat/webapps目录下
+启动tomcat，war包会自动解压
+cd /app/tomcat/tomcat-clean-all/webapps/svnadmin/WEB-INF
+将jdbc.properties备份一份新的出来
+修改文件如下
+db=MySQL
+
+#MySQL
+MySQL.jdbc.driver=com.mysql.jdbc.Driver
+MySQL.jdbc.url=jdbc:mysql://127.0.0.1:3306/svnadmin?characterEncoding=utf-8
+MySQL.jdbc.username=root                  ---数据库用户 
+MySQL.jdbc.password=lanmao123             ---数据库密码
+
+5.测试svnadmin是否运行正常
+http://172.19.60.59:8080/svnadmin/
+
