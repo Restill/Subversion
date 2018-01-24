@@ -62,3 +62,13 @@ MySQL.jdbc.password=lanmao123             ---数据库密码
 5.测试svnadmin是否运行正常
 http://172.19.60.59:8080/svnadmin/
 
+简单使用：建立一个测试库test,添加一个用户user属于开发组，能对test读写
+
+库建立后，选择菜单“用户”
+
+
+配置用户组，选择“设置用户组”-- “developer”--“设置用户”选择user后提交
+
+设置权限，选择“设置权限”
+
+使用TortoiseSVN打开svn://192.168.209.129/test
